@@ -23,6 +23,7 @@ public class ParseSamplesTest extends FrontendTest {
     public static Collection<?> data() {
         final Object[][] data = new Object[][] { { "examples/PeerToPeer.abs" , null }
                                                , { "examples/PingPong.abs" , null }
+                                               , { "examples/BouncingBall.abs" , null }
                                                , { "examples/BoundedBuffer.abs" , null}
                                                , { "examples/SmartHome/abs/" , null}
                                                , { "examples/SmartHome/abs/" , "OilHeating" }

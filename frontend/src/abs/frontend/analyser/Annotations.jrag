@@ -7,6 +7,7 @@ aspect Annotations {
     // Abstraction over annotation list (which is not available for all nodes)
     syn List<Annotation> ASTNode.getNodeAnnotations() = new List<Annotation>();
     eq ClassDecl.getNodeAnnotations() = getAnnotations();
+    eq PhysicalImpl.getNodeAnnotations() = getAnnotations();
     eq MethodImpl.getNodeAnnotations() = getMethodSig().getNodeAnnotations();
     eq Stmt.getNodeAnnotations() = getAnnotations();
     eq MethodSig.getNodeAnnotations() = getAnnotations();

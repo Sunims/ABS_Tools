@@ -26,6 +26,8 @@ public class ParserTest extends FrontendTest {
             // function expressions
             // data constructor expression
             "Int(x , y)",
+            // M.Kettenbach differential equation 
+            "9; v'=0",
             // function application
             "pluss(x,y)", "nth(tail(file,n))",
             // pair constructor
@@ -128,6 +130,8 @@ public class ParserTest extends FrontendTest {
         assertParseOk("class FooClass  implements Foo { {} } {} "); // empty
                                                                     // init
                                                                     // block
+        assertParseOk("class FooClass  implements Foo { physical{} } {} "); // physical block
+               
         assertParseOk(bbclass);
         assertParseError("class FooClass implements {}" + "{}");
 

@@ -10,7 +10,11 @@ import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeProperty;
 
+import abs.frontend.antlr.parser.ABSParser.DiffOpExpContext;
+import abs.frontend.antlr.parser.ABSParser.DifferentialExpContext;
+import abs.frontend.antlr.parser.ABSParser.DifferentialGuardContext;
 import abs.frontend.antlr.parser.ABSParser.MethodsigContext;
+import abs.frontend.antlr.parser.ABSParser.PhysicalContext;
 import abs.frontend.antlr.parser.ABSParser.TraitApplyFragmentContext;
 import abs.frontend.antlr.parser.ABSParser.TraitNameFragmentContext;
 import abs.frontend.antlr.parser.ABSParser.TraitSetFragmentContext;
@@ -329,12 +333,16 @@ public class CreateJastAddASTListener extends ABSBaseListener {
     @Override public void exitMethodsig(ABSParser.MethodsigContext ctx) {
         setV(ctx, new MethodSig(ctx.IDENTIFIER().getText(), v(ctx.annotations()), v(ctx.type_use()), v(ctx.paramlist())));
     }
-
+      
+    @Override
+    public void exitPhysical(PhysicalContext ctx) {
+        setV(ctx, new PhysicalImpl(v(ctx.annotations()), l(ctx.field_decl())));
+    }
+    
     // Classes
     @Override public void exitClass_decl(ABSParser.Class_declContext ctx) {
         ClassDecl c = setV(ctx, new ClassDecl(ctx.TYPE_IDENTIFIER().getText(), v(ctx.annotations()),
-            new List<>(), l(ctx.interface_name()),
-                                                         l(ctx.trait_usage()), new Opt<>(), l(ctx.casestmtbranch()), l(ctx.field_decl()), l(ctx.method())));
+            new List<>(), l(ctx.interface_name()), l(ctx.trait_usage()), new Opt<>(), l(ctx.casestmtbranch()), l(ctx.field_decl()), o(ctx.physical()),l(ctx.method())));
         if (ctx.paramlist() != null) {
             c.setParamList(v(ctx.paramlist()));
         }
@@ -441,6 +449,10 @@ public class CreateJastAddASTListener extends ABSBaseListener {
     }
     @Override public void exitDurationGuard(ABSParser.DurationGuardContext ctx) {
         setV(ctx, new DurationGuard(v(ctx.min), v(ctx.max)));
+    }
+    @Override
+    public void exitDifferentialGuard(DifferentialGuardContext ctx) {
+        setV(ctx, new DifferentialGuard(v(ctx.c)));
     }
     @Override public void exitExpGuard(ABSParser.ExpGuardContext ctx) {
         setV(ctx, new ExpGuard(v(ctx.e)));
@@ -615,6 +627,9 @@ public class CreateJastAddASTListener extends ABSBaseListener {
             break;
         }
     }
+    @Override  public void exitDiffOpExp(DiffOpExpContext ctx) {
+        setV(ctx, new DiffOpExp(v(ctx.pure_exp())));
+    }
     @Override public void exitMultExp(ABSParser.MultExpContext ctx) {
         switch (ctx.op.getType()) {
         case ABSParser.MULT :
@@ -689,7 +704,7 @@ public class CreateJastAddASTListener extends ABSBaseListener {
         setV(ctx, new IfExp(v(ctx.c),
             v(ctx.l),
             v(ctx.r)));
-    }
+    }    
     @Override public void exitCaseExp(ABSParser.CaseExpContext ctx) {
         List<CaseBranch> l = new List<>();
         for (ABSParser.CasebranchContext b : ctx.casebranch()) {
@@ -703,6 +718,11 @@ public class CreateJastAddASTListener extends ABSBaseListener {
             new List<>());
         setASTNodePosition(ctx.IDENTIFIER().getSymbol(), pd);
         setV(ctx, new LetExp(pd, v(ctx.i), v(ctx.b)));
+    }
+
+    @Override
+    public void exitDifferentialExp(DifferentialExpContext ctx) {
+        setV(ctx, new DifferentialExp(v(ctx.i), v(ctx.l), v(ctx.r)));
     }
     @Override public void exitParenExp(ABSParser.ParenExpContext ctx) {
         setV(ctx, v(ctx.pure_exp()));

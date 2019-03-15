@@ -1,0 +1,37 @@
+module Test;
+
+interface IBall {
+    Unit run();
+	Unit go();
+}
+
+class Ball (Rat damping) implements IBall
+{
+    physical
+	{
+		Rat a = 981/100; a'=0;
+		Rat v = 15; v' = a;
+		Rat x = 10; x' = v;
+	}
+    
+    Unit run()
+    {		
+        println("Func Run");
+		await duration(5,5);
+    }
+	
+	Unit go()
+	{
+		println("Func Go");
+	}
+}
+
+
+//MAIN
+{
+	println("Main");
+	IBall bb = new Ball(2);
+
+	Fut<Unit> fut1 = bb!run();
+	fut1.get;
+}

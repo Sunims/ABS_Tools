@@ -12,7 +12,9 @@ import abs.common.CompilerUtils;
 
 import abs.backend.common.CodeStream;
 import abs.backend.erlang.ErlUtil.Mask;
+import abs.frontend.antlr.parser.ABSParser.Pure_expContext;
 import abs.frontend.ast.*;
+import abs.frontend.typechecker.Type;
 
 import com.google.common.collect.Iterables;
 
@@ -36,7 +38,7 @@ public class ClassGenerator {
         this.classDecl = classDecl;
         modName = ErlUtil.getName(classDecl);
         ecs = ea.createSourceFile(modName);
-        hasFields = classDecl.getParams().hasChildren() || classDecl.getFields().hasChildren();
+        hasFields = classDecl.getParams().hasChildren() || classDecl.getFields().hasChildren() || classDecl.hasPhysical();
         try {
             generateHeader();
             generateExports();
@@ -44,6 +46,7 @@ public class ClassGenerator {
             generateRecoverHandler();
             generateMethods();
             generateDataAccess();
+            generatePhysical();
         } finally {
             ecs.close();
         }
@@ -121,6 +124,10 @@ public class ClassGenerator {
             classDecl.getInitBlock().generateErlangCode(ecs, vars);
             ecs.println(",");
         }
+        if(classDecl.getPhysical() != null)        {
+            classDecl.getPhysical().generateErlangCode(ecs, vars);                   
+            ecs.println(",");             
+        }
         if (classDecl.isActiveClass()) {
             ecs.println("cog:process_is_blocked_for_gc(Cog, self()),");
             ecs.print("cog:add_sync(Cog,active_object_task,O,#process_info{method= <<\"run\"/utf8>>},");
@@ -197,9 +204,27 @@ public class ClassGenerator {
         ecs.println("object:get_field_value(O,Var).");
         ecs.decIndent();
         ecs.println();
-        ecs.print("-record(state,{");
+        
+        // generate data access for physical block
+        List<FieldDecl> physicalFieldLst = null;
+        List<FieldDecl> physicalAdditionalFieldLst = new List<FieldDecl>();
+        if(classDecl.hasPhysical())     
+        {
+            physicalFieldLst = classDecl.getPhysical().getFieldList();
+            
+            FieldDecl t_start_physical = new FieldDecl();            
+            t_start_physical.setName("t_start_physical");
+            t_start_physical.setInitExp(new IntLiteral("-1"));
+            physicalAdditionalFieldLst.insertChild(t_start_physical, 0);
+            
+        }
+        else        
+            physicalFieldLst = new List<FieldDecl>();
+        
+        ecs.print("-record(state,{");        
+            
         boolean first = true;
-        for (TypedVarOrFieldDecl f : Iterables.concat(classDecl.getParams(), classDecl.getFields())) {
+        for (TypedVarOrFieldDecl f : Iterables.concat(classDecl.getParams(), classDecl.getFields(), physicalFieldLst, physicalAdditionalFieldLst)) {
             if (!first)
                 ecs.print(",");
             first = false;
@@ -210,7 +235,7 @@ public class ClassGenerator {
         ecs.println("#state{}.");
         ecs.decIndent();
         ecs.println();
-        for (TypedVarOrFieldDecl f : Iterables.concat(classDecl.getParams(), classDecl.getFields())) {
+        for (TypedVarOrFieldDecl f : Iterables.concat(classDecl.getParams(), classDecl.getFields(), physicalFieldLst, physicalAdditionalFieldLst)) {
             ecs.pf(" %%%% %s:%s", f.getFileName(), f.getStartLine());
             ErlUtil.functionHeader(ecs, "get_val_internal", Mask.none, String.format("#state{'%s'=G}", f.getName()),
                                    "'" + f.getName() + "'");
@@ -225,7 +250,7 @@ public class ClassGenerator {
         ecs.println();
         if (hasFields) {
             first = true;
-            for (TypedVarOrFieldDecl f : Iterables.concat(classDecl.getParams(), classDecl.getFields())) {
+            for (TypedVarOrFieldDecl f : Iterables.concat(classDecl.getParams(), classDecl.getFields(), physicalFieldLst, physicalAdditionalFieldLst)) {
                 if (!first) {
                     ecs.println(";");
                     ecs.decIndent();
@@ -243,12 +268,12 @@ public class ClassGenerator {
             ErlUtil.functionHeader(ecs, "set_val_internal", Mask.none, "S", "S", "S");
             ecs.println("throw(badarg).");
             ecs.decIndent();
-        }
+        }        
         ErlUtil.functionHeader(ecs, "get_all_state", Mask.none, "S");
         ecs.println("[");
         ecs.incIndent();
         first = true;
-        for (TypedVarOrFieldDecl f : Iterables.concat(classDecl.getParams(), classDecl.getFields())) {
+        for (TypedVarOrFieldDecl f : Iterables.concat(classDecl.getParams(), classDecl.getFields(), physicalFieldLst, physicalAdditionalFieldLst)) {
             if (!first) ecs.print(", ");
             first = false;
             ecs.pf("{ '%s', S#state.%s }",
@@ -312,4 +337,232 @@ public class ClassGenerator {
         ecs.println(" }.");
         ecs.println();
     }
+    
+
+
+    private void generatePhysical() {
+     // generate data access for physical block
+        ecs.println();
+        List<FieldDecl> physicalFieldLst = null;
+        if(classDecl.hasPhysical())
+        {                                
+            physicalFieldLst = classDecl.getPhysical().getFieldList();       
+            
+            //ErlUtil.functionHeader(ecs, "start_maxima", generatorClassMatcher());
+            ecs.pf("'solve_differential_equation'(%s, Condition, PrintFunction)->", generatorClassMatcher());            
+            ecs.print("put(vars, (get(vars))#{ ");
+            ecs.format("'Condition' => Condition");    
+            ecs.format(", 'PrintFunction' => PrintFunction"); 
+            ecs.println(" }),");        
+            ecs.println("try ");
+            ecs.incIndent();
+            ecs.println("put(vars, (get(vars))#{'output_file_physical' =>   iolist_to_binary([\"output_ \", builtin:toString(Cog,maps:get('this', get(vars))) ,\".txt\"]) }), "); 
+            
+                        
+            Vars vars = new Vars();
+            Vars v=vars.pass();
+            
+            //-----------------------------------------------------
+            // define parameter and equations
+            ecs.print("put(vars, (get(vars))#"); 
+            ecs.pf("{'maximaVal' => iolist_to_binary([" );
+            boolean first = true;
+            
+            ecs.println("\"t0:\", builtin:toString(Cog,get(O,'t_start_physical')), \" \\$ \"");                       
+            
+            if(classDecl.getPhysical().getSolveType() == 1)
+            {
+                for (FieldDecl p : physicalFieldLst) {
+                    if (p.hasInitExp()) {    
+                        ecs.print(",");
+                        
+                        if(p.getInitExp() instanceof DifferentialExp){                       
+                            DifferentialExp diff = (DifferentialExp)p.getInitExp();                             
+                            ecs.print("\"dgl_" + p.getName());                            
+                            ecs.print(": ");
+                            diff.getLeft().generateMaximaCode(ecs, vars);
+                            ecs.print("= ");
+                            diff.getRight().generateMaximaCode(ecs, vars);
+                            ecs.println(" \\$ \"");
+                            ecs.pf(",\" e_%s : subst ( %s, %s(t), dgl_%s ) \\$ \" ", p.getName(), p.getName(), p.getName(), p.getName());
+                            ecs.pf(",\"ode_%s : ode2(e_%s,%s,t) \\$ \"", p.getName(), p.getName(), p.getName());
+                            ecs.pf(",\"%s0:\", builtin:toString(Cog,get(O,'%s')), \" \\$ \"", p.getName(), p.getName());
+//                            ecs.pf(",\"%s : second(ic1(ode_%s,t=t0,%s=%s0)) \\$ \"", p.getName(), p.getName(), p.getName(), p.getName());
+                            ecs.pf(",\"%s : second(first(solve(ic1(ode_%s,t=t0,%s=%s0), %s))) \\$ \"", p.getName(), p.getName(), p.getName(), p.getName(), p.getName());                                                               
+                                                           
+                        }
+                        else
+                        {
+                            //TODO MKE: fehler falls falscher Typ???
+                            ecs.pf("\"%s:\", builtin:toString(Cog,get(O,'%s')), \" \\$ \"", p.getName(), p.getName());
+                        }
+                    }                
+                }
+            }
+            else
+            {
+                writeIntialFunc(physicalFieldLst, vars);
+            }
+            
+            //minimize t maxima
+            ecs.println(",\"fpprintprec:5 \\$ \" ");
+            ecs.println(",\"ratprint : false \\$ \" ");
+            ecs.println(",\"load(fmin_cobyla) \\$ \" ");
+            //ecs.println(",\"t_min: fmin_cobyla(t, [t], [t0+5],  constraints = [\", Condition ,\"], iprint=0) \\$ \" ");
+            ecs.println(",\"t_min: fmin_cobyla(t, [t], [t0+5],  constraints = [\", Condition ,\"]) \\$ \" ");
+            ecs.println(",\"t_min:float(second(first(first(t_min)))) \\$ \" ");
+            ecs.println(",\"ratnumer (rat(float(t_min)));\" ");
+            ecs.println(",\"denom (rat(float(t_min)));\" ");  
+            
+            //get current state 
+            for (FieldDecl p : physicalFieldLst) {
+                if (p.hasInitExp()) {                        
+                    if(p.getInitExp() instanceof DifferentialExp){                                                
+                        ecs.pf(",\"%s_tmp: subst ( t_min, t, %s) \\$ \" ", p.getName(), p.getName());
+                        ecs.pf(",\"ratnumer (rat(float(%s_tmp)));\"", p.getName());
+                        ecs.pf(",\"denom (rat(float(%s_tmp)));\"", p.getName());                        
+                        ecs.pf(",\"string(%s);\"", p.getName());
+                    }
+                }
+            }
+            ecs.println(",\"quit()\\$\"");
+            ecs.println("])}),");            
+            
+            ecs.println("put(vars, (get(vars))#{'command' => iolist_to_binary([\"python start_maxima.py \",\" \\\" \" ,  maps:get('maximaVal', get(vars)),\" \\\" \"])}),");
+            ecs.println("%builtin:println(Cog, builtin:toString(Cog, maps:get('command', get(vars)) )),");
+            ecs.println("MaximaOut = os:cmd(io_lib:format(\"~s\",[maps:get('command', get(vars))])),");
+            ecs.println("ResultLst = re:split(MaximaOut, \"\\n\",[{return,list}]),");
+            
+            //-----------------------------------------------------
+            //read values    
+            ecs.println("T_1 = lists:nth(1, ResultLst),");
+            ecs.println("T_1_int = list_to_integer(T_1),");
+            ecs.println("T_2 = lists:nth(2, ResultLst),");
+            ecs.println("T_2_int = list_to_integer(T_2),");
+
+            // read values
+            int index = 3;
+            first = true;
+            ecs.println("case maps:get('PrintFunction', get(vars)) of");
+            ecs.println("true -> ");
+                 
+            ecs.incIndent();
+            for (FieldDecl p : physicalFieldLst) {
+                if (p.hasInitExp()) {  
+                    if(p.getInitExp() instanceof DifferentialExp){ 
+                        if(first)
+                            first = false;
+                        else
+                            ecs.print(",");
+                        ecs.pf("T_%d = lists:nth(%d, ResultLst),", index, index);
+                        ecs.pf("T_%d_int = list_to_integer(T_%d ),", index, index);
+                        
+                        ecs.pf("T_%d = lists:nth(%d, ResultLst),", index+1, index+1);
+                        ecs.pf("T_%d_int = list_to_integer(T_%d ),",index+1, index+1);                                                
+                        
+                        
+
+                        ecs.pf("file:write_file(maps:get('output_file_physical', get(vars)), io_lib:fwrite(\"~p\\n\", [lists:nth(%d, ResultLst)]), [append]),", index+2);                        
+                        ecs.pf("set(O,'%s',rationals:rdiv(T_%d_int,T_%d_int))", p.getName(), index, index+1);
+                        
+                        index=index+3; 
+                    }                    
+                }
+            }     
+            ecs.print(";");
+            ecs.println("false -> ok");  
+            ecs.decIndent();
+            ecs.println("end,");
+            
+            ecs.println("case cmp:le(rationals:rdiv(T_1_int,T_2_int), get(O,'t_start_physical')) of");
+            ecs.println("true -> rationals:add(get(O,'t_start_physical'), rationals:rdiv(1,100));"); // dass der Task unterbrochen werden kann
+            ecs.println("false -> rationals:rdiv(T_1_int,T_2_int)"); 
+            ecs.println("end ");
+            ecs.println("catch ");
+            ecs.println("_:Exception -> ");
+            ecs.println("io:format(standard_error, \"Uncaught ~s in method solve_differential_equation and no recovery block in class definition, killing object ~s~n\", [builtin:toString(Cog, Exception), builtin:toString(Cog, maps:get('command', get(vars)))]) ");
+            ecs.println("end.");
+            ecs.decIndent();
+            ecs.decIndent();
+            ecs.println();
+        }      
+    }
+    
+    private void writeIntialFunc(List<FieldDecl> physicalFieldLst, Vars vars)
+    {
+        boolean first = true;
+        for (FieldDecl p : physicalFieldLst) {
+            if (p.hasInitExp()) {    
+                ecs.print(",");
+                
+                if(p.getInitExp() instanceof DifferentialExp){                       
+                    DifferentialExp diff = (DifferentialExp)p.getInitExp();                    
+                    ecs.pf("\"%s0:\", builtin:toString(Cog,get(O,'%s')), \" \\$ \"", p.getName(), p.getName());
+                    ecs.print("\"e_" + p.getName());
+                    ecs.print(": ");
+                    diff.getLeft().generateMaximaCode(ecs, vars);
+                    ecs.print("= ");
+                    diff.getRight().generateMaximaCode(ecs, vars);
+                    ecs.println(" \\$ \"");
+                    ecs.pf(",\"atvalue(%s(t),t=0, %s0) \\$ \"", p.getName(), p.getName());                                            
+                }
+                else
+                {
+                    //TODO MKE: fehler falls falscher Typ???
+                    ecs.pf("\"%s:\", builtin:toString(Cog,get(O,'%s')), \" \\$ \"", p.getName(), p.getName());
+                }
+            }                
+        }
+        
+        //-----------------------------------------------------
+        // write code for solve dgl
+        first = true; 
+        ecs.print(",\"sol: desolve([" );            
+        for (FieldDecl p : physicalFieldLst) {
+            if(p.getInitExp() instanceof DifferentialExp){ 
+                if (first) 
+                    first = false;
+                else
+                    ecs.print(",");
+                    
+                if(p.getInitExp() instanceof DifferentialExp){                       
+                    ecs.print("e_" + p.getName());                   
+                }    
+            }
+        }
+        ecs.print("],[");
+        
+        first = true;   
+        int numberOfDgl = 0;
+        for (FieldDecl p : physicalFieldLst) {
+            if(p.getInitExp() instanceof DifferentialExp){ 
+                if (first) 
+                    first = false;
+                else
+                    ecs.print(",");
+                    
+                if(p.getInitExp() instanceof DifferentialExp){                       
+                    ecs.print(p.getName()+"(t)");                   
+                }        
+            }
+            numberOfDgl++;
+        }
+        ecs.println("]) \\$ \" ");
+        
+        //-----------------------------------------------------
+        // write functions definitions
+        int counterDGL = 1; // index in maxima starts at 1
+        for (FieldDecl p : physicalFieldLst) {
+            if(p.getInitExp() instanceof DifferentialExp){ 
+                if(numberOfDgl>1)
+                    ecs.pf(",\" %s(t) := second(sol[%d]) \\$ \" ", p.getName().replace("(t)", ""), counterDGL);
+                else
+                    ecs.pf(",\" %s(t) := second(sol) \\$ \" ", p.getName().replace("(t)", "") );
+                
+                ecs.pf(",\" %s : subst ( t-t0, t, %s(t) ) \\$ \" ", p.getName(), p.getName());
+                counterDGL++;
+            }
+        }
+    } 
+    
 }

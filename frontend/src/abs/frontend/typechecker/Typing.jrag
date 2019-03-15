@@ -225,6 +225,7 @@ aspect Typing {
         return new DataTypeType((ParametricDataTypeDecl)d,this).withAnnotations(getAnnotations());
     }
     eq Unary.getType() = getOperand().getType();
+    eq DiffOpExp.getType() = getOperand().getType();
     eq AddAddExp.getType() = getLeft().getType();  // number or string
     eq ArithmeticExp.getType() {
         // Int or Rat, depending on operands
@@ -312,7 +313,8 @@ aspect Typing {
             return getModel().getListType(UnknownType.INSTANCE);
         }
     }
-    eq LetExp.getType() = getExp().getType();
+    eq LetExp.getType() = getExp().getType();    
+    eq DifferentialExp.getType() = getInitVal().getType();
     eq IntLiteral.getType() = getModel().getIntType();
     eq StringLiteral.getType() =  getModel().getStringType();
     eq NullExp.getType() = NullType.INSTANCE;

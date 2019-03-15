@@ -357,7 +357,13 @@ aspect GenerateMaude {
     public int Unary.numberOfRandom(Set<String> visitedFunctions) {
         return getOperand().numberOfRandom(visitedFunctions);
     }
-
+	
+	syn String DiffOpExp.maudePrefixOperator();
+    eq DiffOpExp.maudePrefixOperator() = "'";
+	public int DiffOpExp.numberOfRandom(Set<String> visitedFunctions) {
+        return getOperand().numberOfRandom(visitedFunctions);
+    }
+    
     syn String Binary.maudeInfixOperator();
     eq EqExp.maudeInfixOperator() = "==";
     eq NotEqExp.maudeInfixOperator() = "/=";
@@ -477,6 +483,21 @@ aspect GenerateMaude {
     public int LetExp.numberOfRandom(Set<String> visitedFunctions) {
         return getVal().numberOfRandom(visitedFunctions)
             + getExp().numberOfRandom(visitedFunctions);
+    }
+    
+    public void DifferentialExp.generateMaude(PrintStream stream) {
+        
+    }
+    public void DifferentialGuard.generateMaude(PrintStream stream) {
+        
+    }
+        
+    public void DiffOpExp.generateMaude(PrintStream stream) {
+        
+    }   
+  
+    public int DifferentialExp.numberOfRandom(Set<String> visitedFunctions) {
+       return 0;
     }
 
     public void IfExp.generateMaude(PrintStream stream) {

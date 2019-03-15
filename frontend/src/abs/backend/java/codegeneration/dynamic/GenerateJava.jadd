@@ -560,6 +560,14 @@ aspect GenerateJavaDynamic_Core {
                 "() { public " + ABSBool.class.getName() +
                 " evaluateExp() { return " + ABSBool.class.getName() + ".TRUE; }}");
     }
+    
+    public void DifferentialGuard.generateJavaGuardDynamic(PrintStream beforeAwaitStream, PrintStream stream) {
+        
+    }   
+  
+    public void DiffOpExp.generateJavaDynamic(PrintStream stream) {
+       
+    }
 
     /*
      * EXPRESSIONS
@@ -889,6 +897,14 @@ aspect GenerateJavaDynamic_Core {
         stream.print(")");
 
     }
+    
+    public void DifferentialExp.generateJavaDynamic(PrintStream stream) {
+        
+    }
+    
+    /*public void DifferentialGuard.generateJavaDynamic(PrintStream stream) {
+        
+    }*/
 
     public void IntLiteral.generateJavaDynamic(PrintStream stream) {
         stream.print(ABSInteger.class.getName());

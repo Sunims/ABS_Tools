@@ -104,6 +104,8 @@ public class ErlApp {
             "absmodel/Emakefile",
             "Dockerfile",
             "start_console",
+            "start_maxima.py",
+            "create_graph.py",
             "run",
             "run.bat",
             "absmodel/rebar.config",
@@ -115,7 +117,9 @@ public class ErlApp {
             "bin/rebar",
             "run",
             "start_console",
-            "link_sources"
+            "link_sources", 
+            "start_maxima.py",
+            "create_graph.py"
             );
 
     private static final String RUNTIME_PATH = "abs/backend/erlang/runtime/";

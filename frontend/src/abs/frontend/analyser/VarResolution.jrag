@@ -117,6 +117,13 @@ aspect VarResolution {
             if (d.getName().equals(name))
                 return d;
         }
+        if(hasPhysical())
+          {
+              for (FieldDecl d : getPhysical().getFields()) {
+                  if (d.getName().equals(name))
+                      return d;
+              }   
+          }
         return null;
     }
 

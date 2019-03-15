@@ -649,6 +649,15 @@ aspect GenerateJava {
                 " evaluateExp() { return " +
                 ABSBool.class.getName() + ".TRUE; }}");
     }
+    
+    public void DifferentialGuard.generateJavaGuard(PrintStream beforeAwaitStream, PrintStream stream) {
+       
+    }
+    
+        
+    public void DiffOpExp.generateJava(PrintStream stream) {
+       
+    }
 
     /*
      * EXPRESSIONS
@@ -1004,6 +1013,10 @@ aspect GenerateJava {
         }
         getVal().generateJava(stream);
         stream.print(")");
+    }
+
+	public void DifferentialExp.generateJava(PrintStream stream) {
+        //TODO 
     }
 
     public void IntLiteral.generateJava(PrintStream stream) {

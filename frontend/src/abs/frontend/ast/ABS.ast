@@ -48,7 +48,7 @@ ParametricPartialFunctionDecl : PartialFunctionDecl ::= Annotation* TypeParamete
 
 UnknownDecl: Decl; // Unknown declarations
 AmbiguousDecl: UnknownDecl ::= <Alternative:java.util.List<Decl>>;
-ClassDecl: BehaviorDecl ::= Annotation* Param:ParamDecl* ImplementedInterfaceUse:InterfaceTypeUse* TraitUse* [InitBlock] RecoverBranch:CaseBranchStmt* Field:FieldDecl* Method:MethodImpl*;
+ClassDecl: BehaviorDecl ::= Annotation* Param:ParamDecl* ImplementedInterfaceUse:InterfaceTypeUse* TraitUse* [InitBlock] RecoverBranch:CaseBranchStmt* Field:FieldDecl* [Physical:PhysicalImpl] Method:MethodImpl*;
 FunctionDecl: BehaviorDecl ::= Annotation* TypeUse Param:ParamDecl* FunctionDef ;
 DataConstructor : Decl ::= <Name> ConstructorArg:ConstructorArg* ;
 ExceptionConstructor : DataConstructor ;
@@ -198,6 +198,8 @@ MainBlock: Block; // Active behavior of the model
 ThrowStmt: Stmt ::= Reason:PureExp;
 DieStmt: Stmt ::= Reason:PureExp;
 
+PhysicalImpl ::= Annotation* Field:FieldDecl* ;
+
 
 abstract Guard;
 ClaimGuard: Guard ::= Var:PureExp;
@@ -206,7 +208,7 @@ AndGuard: Guard ::= Left:Guard Right:Guard;
 ExpGuard: Guard ::= PureExp ;
 // For time-delay guards (used in Maude timed simulation, otherwise always true)
 DurationGuard: Guard ::= Min:PureExp Max:PureExp;
-
+DifferentialGuard: Guard ::= Condition:Guard;
 
 // Expressions
 abstract Exp;
@@ -243,6 +245,8 @@ CaseExp : PureExp ::= Expr:PureExp Branch:CaseBranch* ;
 IfExp : PureExp ::= CondExp:PureExp ThenExp:PureExp ElseExp:PureExp ;
 CaseBranch ::= Left:Pattern Right:PureExp ;
 
+DifferentialExp : PureExp ::= InitVal:PureExp Left:PureExp Right:PureExp;
+
 //Patterns
 abstract Pattern ;
 
@@ -273,6 +277,7 @@ abstract Unary : PureExp ::= Operand:PureExp;
 
 abstract Binary : PureExp ::= Left:PureExp Right:PureExp;
 
+DiffOpExp : Unary;
 
 //Integers
 MinusExp : Unary ;

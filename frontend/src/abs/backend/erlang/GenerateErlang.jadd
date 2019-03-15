@@ -20,7 +20,7 @@ import java.nio.charset.Charset;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-aspect GenerateErlang {
+aspect GenerateErlang { 
 
     public boolean Model.generate_erlang_coverage = false;
 
@@ -138,6 +138,33 @@ aspect GenerateErlang {
     }
     ErlUtil.argumentList(ecs,null, builtin, isFnAppContextImperative(), getParams(), vars);
   }
+  
+  public void FnApp.generateMaximaCode(CodeStream ecs,Vars vars) {
+      
+      if(getName().compareTo("pow") == 0)
+      {
+          getParam(0).generateMaximaCode(ecs, vars);
+          ecs.print("^ (");
+          getParam(1).generateMaximaCode(ecs, vars);
+          ecs.print(")");
+      }   
+      else 
+      {
+          ecs.print(getName());
+          ecs.print("(");
+          boolean first = true;
+          for (PureExp pureExp : getParams()) {
+              if(first)
+                  first=false;
+              else
+                  ecs.print(",");
+              
+              pureExp.generateMaximaCode(ecs, vars);
+            
+          }
+          ecs.print(")");
+      }      
+  }
 
   @Override
   public  void ExpFunctionDef.generateErlangCode(CodeStream ecs,Vars vars) throws IOException{
@@ -243,6 +270,28 @@ aspect GenerateErlang {
   public void Stmt.generateErlangCode(CodeStream ecs,Vars vars) {
     throw new NotImplementedYetException(this);
   }
+  
+  public void PhysicalImpl.generateErlangCode(CodeStream ecs,Vars vars) {
+      ecs.print("set(O,'t_start_physical',-1)");      
+      Vars v=vars.pass();
+      for (FieldDecl p : getFields()) {
+          if (p.hasInitExp()) {                
+              ecs.println(",");                              
+              if(p.getInitExp() instanceof DifferentialExp){
+                  DifferentialExp diff = (DifferentialExp)p.getInitExp();
+                  ecs.format("set(O,'%s',", p.getName());
+                  diff.getInitVal().generateErlangCode(ecs, vars);                
+                  ecs.print(")");
+              }              
+              else
+              {
+                  ecs.format("set(O,'%s',", p.getName());
+                  p.getInitExp().generateErlangCode(ecs, vars);
+                  ecs.print(")");
+              }                  
+          }
+      }
+  }
 
   @Override
   public void VarDeclStmt.generateErlangCode(CodeStream ecs,Vars vars) {
@@ -319,6 +368,10 @@ aspect GenerateErlang {
   }
 
   public void Exp.generateErlangCode(CodeStream ecs,Vars vars) {
+    throw new NotImplementedYetException(this);
+  }
+  
+  public void PureExp.generateMaximaCode(CodeStream ecs,Vars vars) {
     throw new NotImplementedYetException(this);
   }
 
@@ -479,8 +532,22 @@ aspect GenerateErlang {
       if (isVarUseContextImperative()) {
           ecs.format("maps:get('%s', get(vars))", getName());
       } else {
-          ecs.print(vars.get(getName()));
-      }
+          if(getParent() instanceof DifferentialExp)
+              ecs.print(getName());
+          else 
+              ecs.print(vars.get(getName()));
+      }   
+  }
+  
+  @Override
+  public void VarUse.generateMaximaCode(CodeStream ecs,Vars vars) {        
+  	if(getName().compareTo("e") == 0)
+  	    ecs.print("%"); 
+  	
+  	if(getName().compareTo("pi") == 0)
+            ecs.print("%pi");   	
+  	
+  	ecs.print(getName());        
   }
 
   @Override
@@ -500,6 +567,11 @@ aspect GenerateErlang {
   @Override
   public void IntLiteral.generateErlangCode(CodeStream ecs,Vars vars) {
     ecs.print( getContent());
+  }
+  
+  @Override
+  public void IntLiteral.generateMaximaCode(CodeStream ecs,Vars vars) {      
+  	ecs.print( getContent());        
   }
 
   @Override
@@ -527,6 +599,13 @@ aspect GenerateErlang {
     getRight().generateErlangCode(ecs,vars);
     ecs.print(")");
   }
+  
+  @Override
+  public void AndBoolExp.generateMaximaCode(CodeStream ecs,Vars vars){    
+    getLeft().generateMaximaCode(ecs,vars);
+    ecs.print(",");
+    getRight().generateMaximaCode(ecs,vars);    
+  }
 
   @Override
   public void OrBoolExp.generateErlangCode(CodeStream ecs,Vars vars){
@@ -542,6 +621,23 @@ aspect GenerateErlang {
     ecs.print("not (");
     getOperand().generateErlangCode(ecs,vars);
     ecs.print(")");
+  }
+  
+  @Override
+  public void NegExp.generateMaximaCode(CodeStream ecs,Vars vars){
+    throw new NotImplementedYetException(this);
+  }
+  
+  @Override
+  public void DiffOpExp.generateErlangCode(CodeStream ecs,Vars vars){
+    
+  }
+  
+  @Override
+  public void DiffOpExp.generateMaximaCode(CodeStream ecs,Vars vars){
+      ecs.print("\\'diff(");
+      getOperand().generateMaximaCode(ecs, vars);
+      ecs.print(",t,1)");
   }
 
   @Override
@@ -611,6 +707,13 @@ aspect GenerateErlang {
     getRight().generateErlangCode(ecs,vars);
     ecs.print(")");
   }
+  
+  @Override
+  public void GTExp.generateMaximaCode(CodeStream ecs,Vars vars){
+    getLeft().generateMaximaCode(ecs,vars);
+    ecs.print(">=");
+    getRight().generateMaximaCode(ecs,vars);
+  }
 
   @Override
   public void LTExp.generateErlangCode(CodeStream ecs,Vars vars){
@@ -619,6 +722,13 @@ aspect GenerateErlang {
     ecs.print(",");
     getRight().generateErlangCode(ecs,vars);
     ecs.print(")");
+  }
+  
+  @Override
+  public void LTExp.generateMaximaCode(CodeStream ecs,Vars vars){
+    getLeft().generateMaximaCode(ecs,vars);
+    ecs.print("<=");
+    getRight().generateMaximaCode(ecs,vars);
   }
 
   @Override
@@ -629,6 +739,13 @@ aspect GenerateErlang {
     getRight().generateErlangCode(ecs,vars);
     ecs.print(")");
   }
+  
+  @Override
+  public void LTEQExp.generateMaximaCode(CodeStream ecs,Vars vars){
+    getLeft().generateMaximaCode(ecs,vars);
+    ecs.print("=");
+    getRight().generateMaximaCode(ecs,vars);
+  }
 
   @Override
   public void GTEQExp.generateErlangCode(CodeStream ecs,Vars vars){
@@ -637,6 +754,13 @@ aspect GenerateErlang {
     ecs.print(",");
     getRight().generateErlangCode(ecs,vars);
     ecs.print(")");
+  }
+  
+  @Override
+  public void GTEQExp.generateMaximaCode(CodeStream ecs,Vars vars){
+    getLeft().generateMaximaCode(ecs,vars);
+    ecs.print(">=");
+    getRight().generateMaximaCode(ecs,vars);
   }
 
   @Override
@@ -647,6 +771,13 @@ aspect GenerateErlang {
     getRight().generateErlangCode(ecs,vars);
     ecs.print(")");
   }
+  
+  @Override
+  public void EqExp.generateMaximaCode(CodeStream ecs,Vars vars){
+    getLeft().generateMaximaCode(ecs,vars);
+    ecs.print("=");
+    getRight().generateMaximaCode(ecs,vars);
+  }
 
   @Override
   public void NotEqExp.generateErlangCode(CodeStream ecs,Vars vars){
@@ -656,6 +787,13 @@ aspect GenerateErlang {
     getRight().generateErlangCode(ecs,vars);
     ecs.print("))");
   }
+  
+  @Override
+  public void NotEqExp.generateMaximaCode(CodeStream ecs,Vars vars){
+    getLeft().generateMaximaCode(ecs,vars);
+    ecs.print("<>");
+    getRight().generateMaximaCode(ecs,vars);
+  }
 
   @Override
   public void MinusExp.generateErlangCode(CodeStream ecs,Vars vars){
@@ -664,6 +802,14 @@ aspect GenerateErlang {
     else
       ecs.print("rationals:neg( ");
     getOperand().generateErlangCode(ecs,vars);
+    ecs.print(")");
+  }
+  
+  @Override
+  public void MinusExp.generateMaximaCode(CodeStream ecs,Vars vars){
+    ecs.print("(");
+    ecs.print(" -");
+    getOperand().generateMaximaCode(ecs,vars);
     ecs.print(")");
   }
 
@@ -693,6 +839,15 @@ aspect GenerateErlang {
       ecs.print(") ");
     }
   }
+  
+  @Override
+  public void AddAddExp.generateMaximaCode(CodeStream ecs,Vars vars){
+    ecs.print("(");
+    getLeft().generateMaximaCode(ecs,vars);
+    ecs.print("+");
+    getRight().generateMaximaCode(ecs,vars);
+    ecs.print(")");
+  }
 
   @Override
   public void SubAddExp.generateErlangCode(CodeStream ecs,Vars vars){
@@ -709,6 +864,15 @@ aspect GenerateErlang {
       ecs.print(")");
     }
     ecs.print(") ");
+  }
+  
+  @Override
+  public void SubAddExp.generateMaximaCode(CodeStream ecs,Vars vars){
+    ecs.print("(");
+    getLeft().generateMaximaCode(ecs,vars);
+    ecs.print("-");
+    getRight().generateMaximaCode(ecs,vars);
+    ecs.print(")");
   }
 
   @Override
@@ -728,6 +892,15 @@ aspect GenerateErlang {
     }
     ecs.print(") ");
   }
+  
+  @Override
+  public void MultMultExp.generateMaximaCode(CodeStream ecs,Vars vars){
+    ecs.print("(");
+    getLeft().generateMaximaCode(ecs,vars);
+    ecs.print("*");
+    getRight().generateMaximaCode(ecs,vars);
+    ecs.print(")");
+  }
 
   @Override
   public void DivMultExp.generateErlangCode(CodeStream ecs,Vars vars){
@@ -736,6 +909,15 @@ aspect GenerateErlang {
     ecs.print(",");
     getRight().generateErlangCode(ecs,vars);
     ecs.print(") ");
+  }
+  
+  @Override
+  public void DivMultExp.generateMaximaCode(CodeStream ecs,Vars vars){
+    ecs.print("(");
+    getLeft().generateMaximaCode(ecs,vars);
+    ecs.print("/");
+    getRight().generateMaximaCode(ecs,vars);
+    ecs.print(")");
   }
 
   @Override
@@ -764,6 +946,16 @@ aspect GenerateErlang {
     ecs.print(" end(");
     getVal().generateErlangCode(ecs,vars);
     ecs.print("))");
+  }  
+    
+  @Override
+  public void DifferentialExp.generateErlangCode(CodeStream ecs,Vars vars){
+    
+  }
+  
+  @Override
+  public void DifferentialExp.generateMaximaCode(CodeStream ecs,Vars vars){
+    throw new NotImplementedYetException(this);
   }
 
   @Override
@@ -775,6 +967,46 @@ aspect GenerateErlang {
   @Override
   public void FieldUse.generateErlangCode(CodeStream ecs,Vars vars){
     ecs.format("get(O,'%s')",getName());
+  }
+  
+  @Override
+  public void FieldUse.generateMaximaCode(CodeStream ecs,Vars vars){
+      ecs.print(getName());            
+            
+      if( getDecl() instanceof FieldDecl);
+      {
+          FieldDecl fieldDecl = (FieldDecl)getDecl();
+          if(fieldDecl.getInitExp() instanceof DifferentialExp)
+          {
+              boolean found = false;
+              ASTNode<ASTNode> parent = getParent(); 
+              while (parent != null && !false)
+              {
+                  parent = parent.getParent();
+                  if(parent instanceof PhysicalImpl)
+                  {
+                      PhysicalImpl phyImp = (PhysicalImpl)parent;
+                      found = true;
+                      if(phyImp.getSolveType() != 1)
+                          ecs.print("(t)");
+                  }
+              }                  
+          }
+      }  
+  }
+  
+  public int PhysicalImpl.getSolveType(){
+     int returnValue = 0;
+     if (hasAnnotation())
+     {
+         PureExp pureExp = getAnnotation(0).getValue();
+         if(pureExp instanceof IntLiteral)
+         {
+             IntLiteral val = (IntLiteral)pureExp;
+             returnValue = Integer.parseInt(val.getContent());
+         }         
+     }
+     return returnValue;
   }
 
   @Override
@@ -1080,6 +1312,15 @@ aspect GenerateErlang {
   public boolean DurationGuard.hasPoll(){
       return false;
   }
+  
+  @Override
+  public boolean DifferentialGuard.hasPoll(){
+    return false;
+  }  
+  
+  public void Guard.generateMaximaCode(CodeStream ecs,Vars vars){
+	throw new NotImplementedYetException(this);
+  }
 
   @Override
   public void AndGuard.generateErlangCode(CodeStream preAwait,CodeStream ecs,Vars vars){
@@ -1087,6 +1328,13 @@ aspect GenerateErlang {
     if(getLeft().hasPoll()&&getRight().hasPoll())
       ecs.print(" andalso ");
     getRight().generateErlangCode( preAwait, ecs, vars) ;
+  }
+  
+  @Override
+  public void AndGuard.generateMaximaCode(CodeStream ecs,Vars vars){
+    getLeft().generateMaximaCode(ecs, vars);
+    ecs.print(" , ");
+    getRight().generateMaximaCode(ecs, vars) ;
   }
 
   @Override
@@ -1107,14 +1355,45 @@ aspect GenerateErlang {
         }
     }
   }
+    
 
   @Override
   public void ExpGuard.generateErlangCode(CodeStream preAwait,CodeStream ecs,Vars vars){
     getPureExp().generateErlangCode(ecs,vars);
   }
+  
+  @Override
+  public void ExpGuard.generateMaximaCode(CodeStream ecs,Vars vars){
+    getPureExp().generateMaximaCode(ecs,vars);
+  }
 
   @Override
   public void DurationGuard.generateErlangCode(CodeStream preAwait, CodeStream ecs, Vars vars) {
+     boolean found = false;
+      boolean hasPhysical = false;
+      ASTNode<ASTNode> parent = getParent(); 
+      while (parent != null && !false) {
+          parent = parent.getParent();
+          if(parent instanceof ClassDecl) {
+              ClassDecl classDecl = (ClassDecl)parent;              
+              found = true;
+              if(classDecl.hasPhysical())
+                  hasPhysical=true;
+          }              
+      }    
+      
+      if(hasPhysical){
+          preAwait.println("put(vars, (get(vars))#{'output_file_physical' =>   iolist_to_binary([\"output_ \", builtin:toString(Cog,maps:get('this', get(vars))) ,\".txt\"]) }),  ");      
+          preAwait.println("case cmp:lt(get(O,'t_start_physical'),0) of");          
+          preAwait.incIndent();
+          preAwait.println("true -> ");     
+          preAwait.println("set(O,'t_start_physical',m_ABS_StdLib_funs:f_timeValue(Cog,m_ABS_StdLib_funs:f_now(Cog,[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]),[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack])),");      
+          preAwait.println("file:write_file(maps:get('output_file_physical', get(vars)), io_lib:fwrite(\"~p\\n\", [m_ABS_StdLib_funs:f_timeValue(Cog,m_ABS_StdLib_funs:f_now(Cog,[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]),[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack])]), [write]);");      
+          preAwait.println("false ->   ok ");             
+          preAwait.decIndent();
+          preAwait.println("end, ");          
+      }      
+      
       preAwait.print("task:await_duration(Cog,");
       getMin().generateErlangCode(preAwait, vars);
       preAwait.print(",");
@@ -1122,8 +1401,87 @@ aspect GenerateErlang {
       preAwait.print(",");
       preAwait.print(vars.toStack());
       preAwait.println("),");
+            
+     
+      if(hasPhysical){      	  
+          preAwait.println("put(vars, (get(vars))#{'timeValue' => m_ABS_StdLib_funs:f_timeValue(Cog,m_ABS_StdLib_funs:f_now(Cog,[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]),[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]) }), ");
+          preAwait.print("put(vars, (get(vars))#{'cond_physical' => iolist_to_binary([<<\"t=\"/utf8>>, builtin:toString(Cog,");
+          preAwait.print("maps:get('timeValue', get(vars))");
+          preAwait.println(")])}),");  
+          preAwait.print("put(vars, (get(vars))#{'out_physical' => solve_differential_equation(maps:get('this', get(vars)), maps:get('cond_physical', get(vars)),true) }),");   
+          preAwait.println("set(O,'t_start_physical',m_ABS_StdLib_funs:f_timeValue(Cog,m_ABS_StdLib_funs:f_now(Cog,[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]),[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack])),");      
+          preAwait.println("file:write_file(maps:get('output_file_physical', get(vars)), io_lib:fwrite(\"~p\\n\", [m_ABS_StdLib_funs:f_timeValue(Cog,m_ABS_StdLib_funs:f_now(Cog,[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]),[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack])]), [append]),");
+      }      
   }
-
+   
+   @Override
+   public void DifferentialGuard.generateErlangCode(CodeStream preAwait, CodeStream ecs, Vars vars) {  	    
+      preAwait.println("put(vars, (get(vars))#{'output_file_physical' =>   iolist_to_binary([\"output_ \", builtin:toString(Cog,maps:get('this', get(vars))) ,\".txt\"]) }),  ");      
+      preAwait.println("case cmp:lt(get(O,'t_start_physical'),0) of");
+      preAwait.incIndent();
+      preAwait.println("true -> ");     
+      preAwait.println("set(O,'t_start_physical',m_ABS_StdLib_funs:f_timeValue(Cog,m_ABS_StdLib_funs:f_now(Cog,[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]),[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack])),");      
+      preAwait.println("file:write_file(maps:get('output_file_physical', get(vars)), io_lib:fwrite(\"~p\\n\", [m_ABS_StdLib_funs:f_timeValue(Cog,m_ABS_StdLib_funs:f_now(Cog,[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]),[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack])]), [write]);");      
+      preAwait.println("false ->   ok ");
+      preAwait.decIndent();
+      preAwait.println("end, ");
+      preAwait.println("put(vars, (get(vars))#{'timeValue' => m_ABS_StdLib_funs:f_timeValue(Cog,m_ABS_StdLib_funs:f_now(Cog,[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]),[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]) }), ");      
+      preAwait.print("put(vars, (get(vars))#{'out_physical' => solve_differential_equation(maps:get('this', get(vars)), \"");      
+      getCondition().generateMaximaCode(preAwait, vars);
+      preAwait.println("\", false) }),");
+      preAwait.println("put(vars, (get(vars))#{'step_physical' =>  rationals:rdiv(1,100) }),");
+      preAwait.println("put(vars, (get(vars))#{'runAwait_physical' => true}),");
+      preAwait.println("[]=(fun Loop ([])->");    
+      preAwait.println("case maps:get('runAwait_physical', get(vars)) of");
+      preAwait.incIndent();
+      preAwait.println("false -> [];");
+      preAwait.println("true -> receive");
+      preAwait.incIndent();
+      preAwait.println("{stop_world, CogRef} ->");
+      preAwait.println("cog:process_is_blocked_for_gc(Cog, self()),");
+      preAwait.println("cog:process_is_runnable(Cog,self()),");
+      preAwait.println("task:wait_for_token(Cog,[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]);");
+      preAwait.println("die_prematurely ->");
+      preAwait.println("task:send_notifications(killed_by_the_clock),");
+      preAwait.println("exit(killed_by_the_clock)");
+      preAwait.println("after 0 -> ok end,");      
+      preAwait.decIndent();      
+      preAwait.println("case cmp:eq(maps:get('timeValue', get(vars)),get(O,'t_start_physical')) of");
+      preAwait.incIndent();
+      preAwait.println("true -> ok;");
+      preAwait.println("false -> ");
+      preAwait.println("put(vars, (get(vars))#{'timeValue' => m_ABS_StdLib_funs:f_timeValue(Cog,m_ABS_StdLib_funs:f_now(Cog,[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]),[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]) }), ");      
+      preAwait.print("put(vars, (get(vars))#{'out_physical' => solve_differential_equation(maps:get('this', get(vars)), \"");      
+      getCondition().generateMaximaCode(preAwait, vars);
+      preAwait.println("\", false) }),");
+      preAwait.println("set(O,'t_start_physical',m_ABS_StdLib_funs:f_timeValue(Cog,m_ABS_StdLib_funs:f_now(Cog,[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]),[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]))");      
+      preAwait.decIndent();
+      preAwait.println("end,");      
+      preAwait.println("case cmp:lt(m_ABS_StdLib_funs:f_timeValue(Cog,m_ABS_StdLib_funs:f_now(Cog,[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]),[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]), maps:get('out_physical', get(vars))) of");
+      preAwait.println("true -> ");      
+      preAwait.incIndent();         
+      preAwait.println("put(vars, (get(vars))#{'diff' => ( rationals:sub(maps:get('out_physical', get(vars)),m_ABS_StdLib_funs:f_timeValue(Cog,m_ABS_StdLib_funs:f_now(Cog,[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]),[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]))) }),   ");
+      preAwait.println("case cmp:gt(maps:get('diff', get(vars)),maps:get('step_physical', get(vars))) of");
+      preAwait.println("true ->");
+      preAwait.println("task:await_duration(Cog,maps:get('step_physical', get(vars)),maps:get('step_physical', get(vars)),[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]),");
+      preAwait.println("ok;");
+      preAwait.println("false ->   ");
+      preAwait.println("task:await_duration(Cog,maps:get('diff', get(vars)),maps:get('diff', get(vars)),[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack])");      
+      preAwait.println("end;");
+      preAwait.decIndent();
+      preAwait.println("false -> "); 
+      preAwait.println("put(vars, (get(vars))#{'runAwait_physical' := false})");
+      preAwait.println("end,");      
+      preAwait.println("Loop([])  end end)");
+      preAwait.println("([]),");
+      preAwait.println("put(vars, (get(vars))#{'cond_physical' => iolist_to_binary([<<\"t=\"/utf8>>, builtin:toString(Cog,m_ABS_StdLib_funs:f_timeValue(Cog,m_ABS_StdLib_funs:f_now(Cog,[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]),[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]))])}),");
+      preAwait.println("solve_differential_equation(maps:get('this', get(vars)), maps:get('cond_physical', get(vars)), true), ");
+      preAwait.println("file:write_file(maps:get('output_file_physical', get(vars)), io_lib:fwrite(\"~p\\n\", [m_ABS_StdLib_funs:f_timeValue(Cog,m_ABS_StdLib_funs:f_now(Cog,[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]),[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack])]), [append]),");
+      preAwait.println("set(O,'t_start_physical',m_ABS_StdLib_funs:f_timeValue(Cog,m_ABS_StdLib_funs:f_now(Cog,[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]),[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack])),");      
+      preAwait.decIndent();
+  }
+  
+  
   @Override
   public void GetExp.generateErlangCode(CodeStream ecs,Vars vars){
     PureExp future = getPureExp();

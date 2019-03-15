@@ -45,6 +45,7 @@ EQEQ : '==' ;
 NOTEQ : '!=' ;
 IMPLIES : '->' ;
 EQUIV : '<->' ;
+DIFF : '\'';
 
 qualified_type_identifier : (TYPE_IDENTIFIER '.')* TYPE_IDENTIFIER ;
 qualified_identifier : (TYPE_IDENTIFIER '.')* IDENTIFIER ;
@@ -91,12 +92,14 @@ pure_exp : qualified_identifier '(' pure_exp_list ')'      # FunctionExp
     | qualified_identifier '[' pure_exp_list ']'           # VariadicFunctionExp
     | qualified_type_identifier ('(' pure_exp_list ')')?   # ConstructorExp
     | op=(NEGATION | NEGATION_CREOL | MINUS) pure_exp      # UnaryExp
+    | pure_exp DIFF									   	   # DiffOpExp
     | l=pure_exp op=(MULT | DIV | MOD) r=pure_exp          # MultExp
     | l=pure_exp op=(PLUS | MINUS) r=pure_exp              # AddExp
     | l=pure_exp op=(LT | GT | LTEQ | GTEQ) r=pure_exp     # GreaterExp
     | l=pure_exp op=(EQEQ | NOTEQ) r=pure_exp              # EqualExp
     | l=pure_exp op='&&' r=pure_exp                        # AndExp
     | l=pure_exp op='||' r=pure_exp                        # OrExp
+    | i=pure_exp ':'  l=pure_exp '=' r=pure_exp  	   	   # DifferentialExp
     | var_or_field_ref                                     # VarOrFieldExp
     | INTLITERAL                                           # IntExp
     | STRINGLITERAL                                        # StringExp
@@ -162,6 +165,7 @@ guard : var_or_field_ref '?'                           # ClaimGuard
     | 'duration' '(' min=pure_exp ',' max=pure_exp ')' # DurationGuard
     | e=pure_exp                                       # ExpGuard
     | l=guard '&' r=guard                              # AndGuard
+    | 'differential' c=guard 						   # DifferentialGuard
     ;                           // TODO: objectguard
 
 casestmtbranch : pattern '=>' stmt ;
@@ -239,7 +243,8 @@ class_decl : annotations
         'class' TYPE_IDENTIFIER paramlist?
         ('implements' interface_name (',' interface_name)*)?
         '{'
-        field_decl*
+        field_decl*        
+        physical?
         ('{' stmt* '}')?
         ( 'recover' '{' casestmtbranch* '}' )?
         trait_usage*
@@ -248,6 +253,8 @@ class_decl : annotations
     ;
 
 field_decl : annotations type_use IDENTIFIER ('=' pure_exp)? ';' ;
+
+physical : annotations 'physical' '{' field_decl* '}'  ;
 
 method : annotations type_use IDENTIFIER paramlist '{' stmt* '}' ;
 
@@ -505,4 +512,3 @@ compilation_unit : module_decl* delta_decl*
     ;
 
 goal : compilation_unit ;
-

@@ -231,7 +231,14 @@ aspect TypeChecker {
     public abstract void Decl.typeCheck(SemanticConditionList e);
 
     public void ClassDecl.typeCheck(SemanticConditionList e) {
-        Set<String> fields = new HashSet<String>();
+        Set<String> fields = new HashSet<String>();            
+        
+        if(hasPhysical()) {
+           fields.add("t");
+           fields.add("pi");
+           fields.add("e"); 
+        }
+        
         for (ParamDecl d : getParams()) {
             d.typeCheck(e);
             if (!fields.add(d.getName())) {
@@ -248,6 +255,10 @@ aspect TypeChecker {
             if (!fields.add(f.getName())) {
                 e.add(new TypeError(f, ErrorMessage.DUPLICATE_FIELD_NAME, f.getName()));
             }
+        }
+        
+        if(hasPhysical()) {
+        	getPhysical().typeCheck(e,fields);    
         }
 
         if (hasInitBlock()) {
@@ -316,6 +327,24 @@ aspect TypeChecker {
         }
 
     }
+
+
+	public void PhysicalImpl.typeCheck(SemanticConditionList s, Set<String> fields)
+    {		 
+      fields.add("t");	    
+      fields.add("pi");
+      fields.add("e");
+      
+      for (FieldDecl f : getFields()) {
+          f.typeCheck(s);
+          if (!fields.add(f.getName())) {
+              s.add(new TypeError(f, ErrorMessage.DUPLICATE_FIELD_NAME, f.getName()));
+          }
+          if (! (f.getType().isNumericType())) {
+              s.add(new TypeError(this, ErrorMessage.EXPECTED_PHYSICAL_TYPE, f.getType()));
+          }
+      }          
+	}
 
     public void FunctionDecl.typeCheck(SemanticConditionList e) {
         int nerrors = e.getErrorCount();
@@ -794,7 +823,11 @@ aspect TypeChecker {
         getMin().assertHasType(e, getModel().getRatType());
         getMax().assertHasType(e, getModel().getRatType());
     }
-
+    
+    public void DifferentialGuard.typeCheck(SemanticConditionList e) {
+        // MKE: TODO
+    }
+   
     // EXPRESSIONS
 
     public void Exp.typeCheck(SemanticConditionList e) { }
@@ -1008,6 +1041,34 @@ aspect TypeChecker {
         getExp().typeCheck(e);
         if (nerrors == e.getErrorCount()) {
             TypeCheckerHelper.checkAssignment(e,this,getVar().getAccess().getType(),getVal());
+        }
+    }
+    
+     public void DifferentialExp.typeCheck(SemanticConditionList e) {
+        int nerrors = e.getErrorCount();
+        getInitVal().typeCheck(e);
+                
+        //Check context        
+        boolean found = false;
+        ASTNode<ASTNode> parent = getParent();
+        while (parent != null && !false)
+        {
+            parent = parent.getParent();
+            if(parent instanceof PhysicalImpl)
+            {
+                PhysicalImpl phyImp = (PhysicalImpl)parent;
+                found = true;                    
+            }
+        }        
+        if(!found)
+        {
+            nerrors++;
+            e.add(new TypeError(this, ErrorMessage.DIFFERENTIAL_NOT_ALLOWED, ""));
+        }
+        //getLeft().typeCheck(e);
+        //getRight().typeCheck(e);
+        if (nerrors == e.getErrorCount()) {
+            //TypeCheckerHelper.checkAssignment(e,this,getInitVal().getAccess().getType(),getInitVal);
         }
     }
 
