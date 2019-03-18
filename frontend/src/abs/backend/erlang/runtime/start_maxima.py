@@ -9,17 +9,14 @@ val = "maxima -r " + "\"" + cmdParameter + "\""
 maximaOutput = os.popen(val).read()
 maximaOutput = re.sub('\((%i[0-9]+\)).*\\n', '', maximaOutput)
 maximaOutput = re.sub('\\\\\n','', maximaOutput)
+startPos = maximaOutput.find("(%o")
+maximaOutput = maximaOutput[startPos:]
 
 lines = maximaOutput.split("\n")
-headerLineCount = 4
-lineCount = 0
 for line in lines:
-    if lineCount >  headerLineCount :   
-        line = re.sub( '\(%o[0-9]+\)(/R/)?','', line)
-        line = re.sub(' ','', line)
-        if line :
-            print(line)
-    lineCount = lineCount+1
+    line = re.sub( '\(%o[0-9]+\)(/R/)?','', line)
+    line = re.sub(' ','', line)
+    print(line)                  
 
         
 
