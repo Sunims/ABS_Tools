@@ -165,7 +165,7 @@ guard : var_or_field_ref '?'                           # ClaimGuard
     | 'duration' '(' min=pure_exp ',' max=pure_exp ')' # DurationGuard
     | e=pure_exp                                       # ExpGuard
     | l=guard '&' r=guard                              # AndGuard
-    | 'differential' c=guard 						   # DifferentialGuard
+    | 'diff' c=guard 						   # DifferentialGuard
     ;                           // TODO: objectguard
 
 casestmtbranch : pattern '=>' stmt ;
