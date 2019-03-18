@@ -22,6 +22,33 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 aspect GenerateErlang { 
 
+	public ASTNode ASTNode.lookup_await(ASTNode node, ArrayList<String> varNames)
+  	{    
+      ASTNode result = null; 
+      for (int i = 0; i < node.getNumChild(); i++) 
+      {
+          ASTNode child = node.getChild(i);
+          if(child instanceof DifferentialGuard)
+          {
+              return child;
+          }
+          else if(child instanceof FieldUse) 
+          {
+              FieldUse fieldUse = (FieldUse)child;
+              if(varNames.contains((fieldUse.getName())))              
+                  return child; 
+          }
+                      
+          result = lookup_await(child, varNames);              
+          
+      }
+      
+      if(result != null)
+          return result;
+      else
+          return null;
+  	}
+  	
     public boolean Model.generate_erlang_coverage = false;
 
     public void Model.generateErlangCode(ErlApp ea, EnumSet<ErlangBackend.CompileOptions> compileOptions) throws IOException{
@@ -220,6 +247,8 @@ aspect GenerateErlang {
      decl.generateErlangCode(ea);
     }
   }
+  
+  
 
   @Override
   public void Block.generateErlangCode(CodeStream ecs,Vars vars)
@@ -1367,6 +1396,7 @@ aspect GenerateErlang {
     getPureExp().generateMaximaCode(ecs,vars);
   }
 
+	
   @Override
   public void DurationGuard.generateErlangCode(CodeStream preAwait, CodeStream ecs, Vars vars) {
      boolean found = false;

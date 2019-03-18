@@ -4,6 +4,7 @@
 package abs.backend.erlang;
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -75,6 +76,30 @@ public class ClassGenerator {
             ecs.println(" }),");
             ecs.println("try");
             ecs.incIndent();
+            
+            if(classDecl.hasPhysical())
+            {
+                ArrayList<String> physicalFields = new ArrayList<String>();
+               
+                for (FieldDecl fieldDecl : classDecl.getPhysical().getFieldList()) {
+                    physicalFields.add(fieldDecl.getName());
+                } 
+                    
+               ASTNode node = m.getBlock().lookup_await(m.getBlock(), physicalFields);
+               if(node instanceof FieldUse)
+               {
+                   ecs.println("put(vars, (get(vars))#{'output_file_physical' =>   iolist_to_binary([\"output_ \", builtin:toString(Cog,maps:get('this', get(vars))) ,\".txt\"]) }),  ");      
+                   ecs.println("case cmp:lt(get(O,'t_start_physical'),0) of");          
+                   ecs.incIndent();
+                   ecs.println("true -> ");     
+                   ecs.println("set(O,'t_start_physical',m_ABS_StdLib_funs:f_timeValue(Cog,m_ABS_StdLib_funs:f_now(Cog,[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]),[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack])),");      
+                   ecs.println("file:write_file(maps:get('output_file_physical', get(vars)), io_lib:fwrite(\"~p\\n\", [m_ABS_StdLib_funs:f_timeValue(Cog,m_ABS_StdLib_funs:f_now(Cog,[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]),[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack])]), [write]);");      
+                   ecs.println("false ->   ok ");             
+                   ecs.decIndent();
+                   ecs.println("end, ");         
+               }               
+            }
+            
             Vars vars = new Vars();
             m.getBlock().generateErlangCode(ecs, vars);
             ecs.println();
