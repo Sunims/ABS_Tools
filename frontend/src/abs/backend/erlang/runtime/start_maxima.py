@@ -16,7 +16,8 @@ lines = maximaOutput.split("\n")
 for line in lines:
     line = re.sub( '\(%o[0-9]+\)(/R/)?','', line)
     line = re.sub(' ','', line)
-    print(line)                  
+    if line:
+        print(line)                  
 
         
 

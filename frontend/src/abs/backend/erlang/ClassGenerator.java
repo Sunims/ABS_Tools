@@ -237,6 +237,18 @@ public class ClassGenerator {
         {
             physicalFieldLst = classDecl.getPhysical().getFieldList();
             
+            boolean hasTminimizeVar = false;
+            for (FieldDecl p : physicalFieldLst) {
+                if(p.getName().equals("t_min_factor"))
+                    hasTminimizeVar = true;
+            }
+            if(!hasTminimizeVar) {
+                FieldDecl t_min_factor = new FieldDecl();            
+                t_min_factor.setName("t_min_factor");
+                t_min_factor.setInitExp(new IntLiteral("-1"));
+                physicalAdditionalFieldLst.insertChild(t_min_factor, 0);
+            }
+            
             FieldDecl t_start_physical = new FieldDecl();            
             t_start_physical.setName("t_start_physical");
             t_start_physical.setInitExp(new IntLiteral("-1"));
@@ -434,7 +446,9 @@ public class ClassGenerator {
             ecs.println(",\"ratprint : false \\$ \" ");
             ecs.println(",\"load(fmin_cobyla) \\$ \" ");
             //ecs.println(",\"t_min: fmin_cobyla(t, [t], [t0+5],  constraints = [\", Condition ,\"], iprint=0) \\$ \" ");
-            ecs.println(",\"t_min: fmin_cobyla(t, [t], [t0+5],  constraints = [\", Condition ,\"]) \\$ \" ");
+            ecs.print(",\"t_min: fmin_cobyla(t, [t], [t0 + \" ");
+            ecs.print(", builtin:toString(Cog,get(O,'t_min_factor'))");
+            ecs.println(",\"],  constraints = [\", Condition ,\"]) \\$ \" ");
             ecs.println(",\"t_min:float(second(first(first(t_min)))) \\$ \" ");
             ecs.println(",\"ratnumer (rat(float(t_min)));\" ");
             ecs.println(",\"denom (rat(float(t_min)));\" ");  
