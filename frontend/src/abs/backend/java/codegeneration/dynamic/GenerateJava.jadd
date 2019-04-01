@@ -544,6 +544,10 @@ aspect GenerateJavaDynamic_Core {
         getRight().generateJavaGuardDynamic(beforeAwaitStream, stream);
         stream.print(")");
     }
+    
+    public void OrGuard.generateJavaGuardDynamic(PrintStream beforeAwaitStream, PrintStream stream) {        
+    	throw new NotImplementedYetException(this);
+    }
 
     public void ClaimGuard.generateJavaGuardDynamic(PrintStream beforeAwaitStream, PrintStream stream) {
         stream.print("new " + JavaBackendConstants.CLAIMGUARD + "(");

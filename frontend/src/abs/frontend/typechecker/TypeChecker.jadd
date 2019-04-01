@@ -800,6 +800,11 @@ aspect TypeChecker {
         getLeft().typeCheck(e);
         getRight().typeCheck(e);
     }
+    
+    public void OrGuard.typeCheck(SemanticConditionList e) {
+        getLeft().typeCheck(e);
+        getRight().typeCheck(e);
+    }
 
     public void ClaimGuard.typeCheck(SemanticConditionList e) {
         getVar().typeCheck(e);

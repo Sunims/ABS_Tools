@@ -303,7 +303,11 @@ aspect GenerateErlang {
   public void PhysicalImpl.generateErlangCode(CodeStream ecs,Vars vars) {
       ecs.print("set(O,'t_start_physical',-1)");      
       Vars v=vars.pass();
+      boolean hasTMinField = false;
       for (FieldDecl p : getFields()) {
+          if(p.getName().equals("t_min_factor"))
+              hasTMinField = true;
+          
           if (p.hasInitExp()) {                
               ecs.println(",");                              
               if(p.getInitExp() instanceof DifferentialExp){
@@ -319,6 +323,12 @@ aspect GenerateErlang {
                   ecs.print(")");
               }                  
           }
+      }
+      
+      if(!hasTMinField)
+      {
+          ecs.println(",");
+          ecs.println("set(O,'t_min_factor',5)");
       }
   }
 
@@ -1361,9 +1371,31 @@ aspect GenerateErlang {
   
   @Override
   public void AndGuard.generateMaximaCode(CodeStream ecs,Vars vars){
+    //    getLeft().generateMaximaCode(ecs, vars);
+//    ecs.print(" , ");
+//    getRight().generateMaximaCode(ecs, vars) ;
+    
+    ecs.print("put(vars, (get(vars))#{'out_physical' => solve_differential_equation(maps:get('this', get(vars)), \"");      
     getLeft().generateMaximaCode(ecs, vars);
     ecs.print(" , ");
     getRight().generateMaximaCode(ecs, vars) ;
+    ecs.println("\", false) }),");
+  }
+  
+  @Override
+  public void OrGuard.generateMaximaCode(CodeStream ecs,Vars vars){
+		getLeft().generateMaximaCode(ecs, vars);
+	    ecs.println("put(vars, (get(vars))#{'out_physical_temp' => maps:get('out_physical', get(vars))}),");
+	    getRight().generateMaximaCode(ecs, vars) ;
+	    ecs.print("case ((cmp:lt(maps:get('out_physical_temp', get(vars)),maps:get('out_physical', get(vars)))) and  ");
+	    ecs.print("((not cmp:eq(maps:get('out_physical_temp', get(vars)),rationals:add(get(O,'t_start_physical'), rationals:rdiv(1,100))))))");
+	    ecs.println("or (cmp:eq(maps:get('out_physical', get(vars)),rationals:add(get(O,'t_start_physical'), rationals:rdiv(1,100)))) of");
+	    ecs.incIndent();
+	    ecs.println("true -> ");
+	    ecs.println("put(vars, (get(vars))#{'out_physical' := maps:get('out_physical_temp', get(vars))});");
+	    ecs.println("false ->   ok");
+	    ecs.decIndent();
+	    ecs.println("end,");	
   }
 
   @Override
@@ -1393,7 +1425,9 @@ aspect GenerateErlang {
   
   @Override
   public void ExpGuard.generateMaximaCode(CodeStream ecs,Vars vars){
-    getPureExp().generateMaximaCode(ecs,vars);
+    ecs.print("put(vars, (get(vars))#{'out_physical' := solve_differential_equation(maps:get('this', get(vars)), \"");      
+   	getPureExp().generateMaximaCode(ecs, vars);
+   	ecs.println("\", false) }),");
   }
 
 	
@@ -1446,7 +1480,7 @@ aspect GenerateErlang {
    
    @Override
    public void DifferentialGuard.generateErlangCode(CodeStream preAwait, CodeStream ecs, Vars vars) {  	    
-      preAwait.println("put(vars, (get(vars))#{'output_file_physical' =>   iolist_to_binary([\"output_ \", builtin:toString(Cog,maps:get('this', get(vars))) ,\".txt\"]) }),  ");      
+       preAwait.println("put(vars, (get(vars))#{'output_file_physical' =>   iolist_to_binary([\"output_ \", builtin:toString(Cog,maps:get('this', get(vars))) ,\".txt\"]) }),  ");      
       preAwait.println("case cmp:lt(get(O,'t_start_physical'),0) of");
       preAwait.incIndent();
       preAwait.println("true -> ");     
@@ -1456,9 +1490,11 @@ aspect GenerateErlang {
       preAwait.decIndent();
       preAwait.println("end, ");
       preAwait.println("put(vars, (get(vars))#{'timeValue' => m_ABS_StdLib_funs:f_timeValue(Cog,m_ABS_StdLib_funs:f_now(Cog,[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]),[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]) }), ");      
-      preAwait.print("put(vars, (get(vars))#{'out_physical' => solve_differential_equation(maps:get('this', get(vars)), \"");      
+//      preAwait.print("put(vars, (get(vars))#{'out_physical' => solve_differential_equation(maps:get('this', get(vars)), \"");      
+//      getCondition().generateMaximaCode(preAwait, vars);
+//      preAwait.println("\", false) }),");
+      preAwait.println("put(vars, (get(vars))#{'out_physical' => -1}),");
       getCondition().generateMaximaCode(preAwait, vars);
-      preAwait.println("\", false) }),");
       preAwait.println("put(vars, (get(vars))#{'step_physical' =>  rationals:rdiv(1,100) }),");
       preAwait.println("put(vars, (get(vars))#{'runAwait_physical' => true}),");
       preAwait.println("[]=(fun Loop ([])->");    
@@ -1481,9 +1517,9 @@ aspect GenerateErlang {
       preAwait.println("true -> ok;");
       preAwait.println("false -> ");
       preAwait.println("put(vars, (get(vars))#{'timeValue' => m_ABS_StdLib_funs:f_timeValue(Cog,m_ABS_StdLib_funs:f_now(Cog,[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]),[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]) }), ");      
-      preAwait.print("put(vars, (get(vars))#{'out_physical' => solve_differential_equation(maps:get('this', get(vars)), \"");      
+      //preAwait.print("put(vars, (get(vars))#{'out_physical' => solve_differential_equation(maps:get('this', get(vars)), \"");      
       getCondition().generateMaximaCode(preAwait, vars);
-      preAwait.println("\", false) }),");
+      //preAwait.println("\", false) }),");
       preAwait.println("set(O,'t_start_physical',m_ABS_StdLib_funs:f_timeValue(Cog,m_ABS_StdLib_funs:f_now(Cog,[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]),[O,DC|lists:map(fun({_, X}) -> X end, maps:to_list(get(vars))) ++ Stack]))");      
       preAwait.decIndent();
       preAwait.println("end,");      

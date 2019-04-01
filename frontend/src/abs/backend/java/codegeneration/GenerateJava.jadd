@@ -632,6 +632,11 @@ aspect GenerateJava {
         getRight().generateJavaGuard(beforeAwaitStream, stream);
         stream.print(")");
     }
+    
+    public void OrGuard.generateJavaGuard(PrintStream beforeAwaitStream, PrintStream stream) {        
+    	throw new NotImplementedYetException(this);
+    }
+    
 
     public void ClaimGuard.generateJavaGuard(PrintStream beforeAwaitStream, PrintStream stream) {
         stream.print("new " + JavaBackendConstants.CLAIMGUARD + "(");

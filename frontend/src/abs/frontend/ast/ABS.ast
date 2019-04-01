@@ -203,6 +203,7 @@ PhysicalImpl ::= Annotation* Field:FieldDecl* ;
 
 abstract Guard;
 ClaimGuard: Guard ::= Var:PureExp;
+OrGuard: Guard ::= Left:Guard Right:Guard;
 AndGuard: Guard ::= Left:Guard Right:Guard;
 //For boolean guards
 ExpGuard: Guard ::= PureExp ;

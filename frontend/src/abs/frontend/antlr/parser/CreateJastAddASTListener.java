@@ -460,6 +460,9 @@ public class CreateJastAddASTListener extends ABSBaseListener {
     @Override public void exitAndGuard(ABSParser.AndGuardContext ctx) {
         setV(ctx, new AndGuard(v(ctx.l), v(ctx.r)));
     }
+    @Override public void exitOrGuard(ABSParser.OrGuardContext ctx) {
+        setV(ctx, new OrGuard(v(ctx.l), v(ctx.r)));
+    }
     @Override public void exitSuspendStmt(ABSParser.SuspendStmtContext ctx) {
         setV(ctx, new SuspendStmt(v(ctx.annotations())));
     }

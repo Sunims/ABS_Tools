@@ -514,7 +514,7 @@ public class ClassGenerator {
             ecs.println("end,");
             
             ecs.println("case cmp:le(rationals:rdiv(T_1_int,T_2_int), get(O,'t_start_physical')) of");
-            ecs.println("true -> rationals:add(get(O,'t_start_physical'), rationals:rdiv(1,100));"); // dass der Task unterbrochen werden kann
+            ecs.println("true -> rationals:add(get(O,'t_start_physical'), rationals:rdiv(1,100));"); // dass der Task unterbrochen werden kann           
             ecs.println("false -> rationals:rdiv(T_1_int,T_2_int)"); 
             ecs.println("end ");
             ecs.println("catch ");

@@ -805,6 +805,10 @@ aspect GenerateMaude {
         getRight().generateMaude(stream);
         stream.print(") ");
     }
+    
+    public void OrGuard.generateMaude(PrintStream stream) {        
+    	throw new NotImplementedYetException(this);
+    }
 
     public void ExpGuard.generateMaude(PrintStream stream) {
         getPureExp().generateMaude(stream);
