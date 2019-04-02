@@ -639,12 +639,6 @@ aspect GenerateErlang {
     ecs.print(")");
   }
   
-  @Override
-  public void AndBoolExp.generateMaximaCode(CodeStream ecs,Vars vars){    
-    getLeft().generateMaximaCode(ecs,vars);
-    ecs.print(",");
-    getRight().generateMaximaCode(ecs,vars);    
-  }
 
   @Override
   public void OrBoolExp.generateErlangCode(CodeStream ecs,Vars vars){
@@ -1371,10 +1365,6 @@ aspect GenerateErlang {
   
   @Override
   public void AndGuard.generateMaximaCode(CodeStream ecs,Vars vars){
-    //    getLeft().generateMaximaCode(ecs, vars);
-//    ecs.print(" , ");
-//    getRight().generateMaximaCode(ecs, vars) ;
-    
     ecs.print("put(vars, (get(vars))#{'out_physical' => solve_differential_equation(maps:get('this', get(vars)), \"");      
     getLeft().generateMaximaCode(ecs, vars);
     ecs.print(" , ");
@@ -1425,9 +1415,14 @@ aspect GenerateErlang {
   
   @Override
   public void ExpGuard.generateMaximaCode(CodeStream ecs,Vars vars){
-    ecs.print("put(vars, (get(vars))#{'out_physical' := solve_differential_equation(maps:get('this', get(vars)), \"");      
-   	getPureExp().generateMaximaCode(ecs, vars);
-   	ecs.println("\", false) }),");
+    if(getParent() instanceof DifferentialGuard)
+      {
+          ecs.print("put(vars, (get(vars))#{'out_physical' := solve_differential_equation(maps:get('this', get(vars)), \"");      
+          getPureExp().generateMaximaCode(ecs, vars);
+          ecs.println("\", false) }),");
+      }
+      else
+          getPureExp().generateMaximaCode(ecs, vars);
   }
 
 	
