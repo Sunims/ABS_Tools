@@ -776,7 +776,7 @@ aspect GenerateErlang {
   @Override
   public void LTEQExp.generateMaximaCode(CodeStream ecs,Vars vars){
     getLeft().generateMaximaCode(ecs,vars);
-    ecs.print("=");
+    ecs.print("<=");
     getRight().generateMaximaCode(ecs,vars);
   }
 
